@@ -457,8 +457,8 @@ export default function NeonEyeSwarm() {
       const eyes = eyesRef.current;
       const stomp = stompRef.current;
 
-      // Rebuild grid every 5 frames (lazy)
-      if (frameCountRef.current % 5 === 0) {
+      // Rebuild spatial grid lazily — every 3 frames (~8fps bei 25fps-Limit)
+      if (frameCountRef.current % 3 === 0) {
         gridRef.current = buildGrid(eyes);
       }
       frameCountRef.current++;
