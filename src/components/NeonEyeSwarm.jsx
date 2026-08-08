@@ -640,6 +640,43 @@ export default function NeonEyeSwarm() {
         if (eye.x > W - margin) eye.vx -= 0.02;
         if (eye.y < margin) eye.vy += 0.02;
         if (eye.y > H - margin) eye.vy -= 0.02;
+        // ── Inter-eye Kollision (nach Nuke-Explosion) ──
+        // Augen verdrängen sich gegenseitig (sich nicht durchdringen)
+        const gridX = Math.floor(eye.x / CELL_SIZE);
+        const gridY = Math.floor(eye.y / CELL_SIZE);
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const key = (gridX + dx) + "_" + (gridY + dy);
+            const cell = grid[key];
+            if (cell) {
+              for (let j = 0; j < cell.length; j++) {
+                const other = cell[j];
+                if (other === eye) continue;
+                const ox = other.x - eye.x;
+                const oy = other.y - eye.y;
+                const distSq = ox * ox + oy * oy;
+                const minDist = eye.radius + other.radius + 1;  // +1 Abstand
+                if (distSq < minDist * minDist && distSq > 0) {
+                  const dist = Math.sqrt(distSq);
+                  const overlap = minDist - dist;
+                  // Verteile die Überlappung auf beide Augen
+                  const nx = ox / dist;
+                  const ny = oy / dist;
+                  eye.x -= nx * overlap * 0.5;
+                  eye.y -= ny * overlap * 0.5;
+                  other.x += nx * overlap * 0.5;
+                  other.y += ny * overlap * 0.5;
+                  // Gegenseitige Abstoßung (Verdrängung)
+                  const separation = overlap * 0.3;
+                  eye.vx -= nx * separation;
+                  eye.vy -= ny * separation;
+                  other.vx += nx * separation;
+                  other.vy += ny * separation;
+                }
+              }
+            }
+          }
+        }
 
         eye.x += eye.vx;
         eye.y += eye.vy;
