@@ -28,12 +28,13 @@ export default function HeroSection() {
       >
         <video
           autoPlay
-          loop
           muted
           playsInline
           preload="auto"
           className="absolute inset-0 w-full h-full object-cover z-10"
           onPlay={(e) => { e.target.playbackRate = 0.9; }}
+          onEnded={(e) => { e.target.pause(); e.target.currentTime = e.target.duration; }}
+          onDoubleClick={(e) => { e.target.currentTime = 0; e.target.play(); }}
         >
           <source src="/hailuo-hero-intro.mp4" type="video/mp4" />
         </video>
