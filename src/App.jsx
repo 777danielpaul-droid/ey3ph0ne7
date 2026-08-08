@@ -8,8 +8,10 @@ export default function App() {
     <>
       <Navbar />
       <main className="relative z-10">
-        <NeonEyeSwarm />
         <HeroSection />
+        <div id="game-wrapper" className="relative">
+          <NeonEyeSwarm />
+        </div>
       </main>
       <Footer />
       <div className="crt-vignette" aria-hidden="true" />

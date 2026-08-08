@@ -1,15 +1,45 @@
 import { motion, useScroll, useTransform } from "framer-motion"
+import { useState, useEffect } from "react"
 
 export default function HeroSection() {
   const { scrollY } = useScroll()
   const bgY = useTransform(scrollY, [0, 600], [0, 120])
   const opacity = useTransform(scrollY, [0, 400], [1, 0])
+  const [introDone, setIntroDone] = useState(false);
+
+  // Fade-in video, then fade out after 3s → reveal hero text
+  useEffect(() => {
+    const t = setTimeout(() => setIntroDone(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <section
       id="hero"
       className="hero-holo relative min-h-screen h-screen flex items-center justify-center text-center overflow-hidden"
     >
+
+      {/* ── Video-Intro (immer gerendert, fade-out nach 3s via motion-opacity) ── */}
+      <motion.div
+        className="absolute inset-0 w-full h-full z-10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+      >
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover z-10"
+          onPlay={(e) => { e.target.playbackRate = 0.9; }}
+        >
+          <source src="/hailuo-hero-intro.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/30 to-transparent" />
+      </motion.div>
+
       <motion.div
         className="absolute inset-0 w-[20rem] h-[20rem] sm:w-[32rem] sm:h-[32rem] rounded-full bg-neon/25 blur-[60px] sm:blur-[120px]"
         style={{ y: bgY, opacity }}
