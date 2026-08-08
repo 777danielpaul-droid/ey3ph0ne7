@@ -14,7 +14,6 @@ export default function App() {
         </div>
       </main>
       <Footer />
-      <div className="crt-vignette" aria-hidden="true" />
     </>
   )
 }

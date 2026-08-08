@@ -45,7 +45,7 @@ export default function Footer() {
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      style={{ borderBottomColor: "rgba(192, 38, 211, 1)" }}
+      style={{ borderBottomColor: "rgba(165, 242, 243, 1)" }}
       className={`fixed bottom-0 inset-x-0 z-50 overflow-hidden transition-all duration-500 ease-in-out ${
         isActive ? "footer-glow max-h-[120px]" : "max-h-[4px]"
       }`}
