@@ -4,7 +4,7 @@ import { toggleTheme, getInitialTheme } from "../../lib/theme"
 
 const NEON = ["#c026d3", "#7c3aed", "#c9a227"]
 
-export default function Navbar() {
+export default function Navbar({ onSwarmToggle }) {
   const [open, setOpen] = useState(false)
   const [theme, setTheme] = useState(() => getInitialTheme())
   const [hover, setHover] = useState({})
@@ -17,6 +17,7 @@ export default function Navbar() {
   const links = [
     { label: "Start", href: "#hero" },
     { label: "Swarm", href: "#swarm" },
+    { label: "Test", label: "Test" },
   ]
 
   return (
@@ -39,16 +40,28 @@ export default function Navbar() {
 
           <ul className="hidden md:flex items-center gap-8">
             {links.map((n) => (
-              <li key={n.href}>
-                <a
-                  href={n.href}
-                  onMouseEnter={() => randomNeon(n.href)}
-                  onMouseLeave={() => resetNeon(n.href)}
-                  style={{ color: hover[n.href] || "#22d3ee" }}
-                  className="mono-label text-cyan hover:text-cyan transition-colors"
-                >
-                  {n.label}
-                </a>
+              <li key={n.href || n.label}>
+                {n.onClick ? (
+                  <button
+                    onClick={n.onClick}
+                    onMouseEnter={() => randomNeon(n.label)}
+                    onMouseLeave={() => resetNeon(n.label)}
+                    style={{ color: hover[n.label] || "#22d3ee" }}
+                    className="mono-label text-cyan hover:text-cyan transition-colors"
+                  >
+                    {n.label}
+                  </button>
+                ) : (
+                  <a
+                    href={n.href}
+                    onMouseEnter={() => randomNeon(n.href)}
+                    onMouseLeave={() => resetNeon(n.href)}
+                    style={{ color: hover[n.href] || "#22d3ee" }}
+                    className="mono-label text-cyan hover:text-cyan transition-colors"
+                  >
+                    {n.label}
+                  </a>
+                )}
               </li>
             ))}
           </ul>
@@ -64,7 +77,6 @@ export default function Navbar() {
                 {theme === "dark" ? "☀" : "☾"}
               </span>
             </button>
-
             <button
               type="button"
               aria-label="Navigation öffnen"
@@ -86,17 +98,26 @@ export default function Navbar() {
             >
               <ul className="px-5 py-4 flex flex-col gap-3">
                 {links.map((n) => (
-                  <li key={n.href}>
-                    <a
-                      href={n.href}
-                      onMouseEnter={() => randomNeon(n.href)}
-                      onMouseLeave={() => resetNeon(n.href)}
-                      onClick={() => setOpen(false)}
-                      style={{ color: hover[n.href] || "#22d3ee" }}
-                      className="mono-label text-cyan"
-                    >
-                      {n.label}
-                    </a>
+                  <li key={n.href || n.label}>
+                    {n.onClick ? (
+                      <button
+                        onClick={() => {
+                          n.onClick()
+                          setOpen(false)
+                        }}
+                        className="mono-label text-cyan"
+                      >
+                        {n.label}
+                      </button>
+                    ) : (
+                      <a
+                        href={n.href}
+                        onClick={() => setOpen(false)}
+                        className="mono-label text-cyan"
+                      >
+                        {n.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

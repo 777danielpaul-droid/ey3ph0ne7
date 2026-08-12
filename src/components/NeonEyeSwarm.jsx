@@ -111,7 +111,7 @@ function playStompSound(charge = 1) {
   subOsc.stop(t + 0.55 * charge);
 }
 
-export default function NeonEyeSwarm() {
+export default function NeonEyeSwarm({ open, onClose }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const eyesRef = useRef([]);
@@ -235,24 +235,30 @@ export default function NeonEyeSwarm() {
     ctx.restore();
   }, []);
 
-  useEffect(() => {
-    // Pre-initialize AudioContext + noise buffer on mount (idle time)
-    // so first click doesn't pay the init cost.
-    const initAudio = () => {
-      const ctx = getAudioCtx();
-      if (ctx) {
-        getNoiseBuffer(ctx);
-      }
-    };
-    if (document.readyState === "complete") {
-      initAudio();
-    } else {
-      window.addEventListener("load", initAudio);
-      return () => window.removeEventListener("load", initAudio);
-    }
-  }, []);
+  const visibleRef = useRef(false);
 
   useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    if (open) {
+      visibleRef.current = true;
+      document.addEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "hidden";
+    } else {
+      visibleRef.current = false;
+    }
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!visibleRef.current) return;
+
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -687,7 +693,7 @@ export default function NeonEyeSwarm() {
       canvas.removeEventListener("mouseup", releaseCharge);
       canvas.removeEventListener("click", handleClick);
     };
-  }, [initEyes, drawEye]);
+  }, [initEyes, drawEye, open]);
 
   // Video export
   const startRecording = () => {
@@ -714,11 +720,16 @@ export default function NeonEyeSwarm() {
   };
 
   return (
-    <section id="swarm" className="relative w-full h-screen scroll-mt-[49px]">
+    <section
+      id="swarm"
+      className="fixed inset-0 z-50 scroll-mt-[49px]"
+      hidden={!open}
+      aria-hidden={!open}
+    >
       <div
         ref={containerRef}
         className="relative w-full h-full select-none overflow-visible"
-        style={{ cursor: "crosshair" }}
+        style={{ cursor: "crosshair", pointerEvents: open ? "auto" : "none" }}
       >
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
@@ -728,6 +739,13 @@ export default function NeonEyeSwarm() {
         <div className="absolute top-5 right-6 text-[11px] font-mono tracking-wider text-steel pointer-events-none">
           EYES: 80
         </div>
+
+        <button
+          onClick={onClose}
+          className="absolute top-5 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-neon/20 border border-neon/50 text-cyan text-xs font-mono tracking-wider hover:bg-neon/30 hover:text-ice transition-all duration-200 active:scale-95"
+        >
+          ✕ CLOSE
+        </button>
 
         <button
           onClick={startRecording}
