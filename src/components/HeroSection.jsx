@@ -46,10 +46,20 @@ export default function HeroSection() {
         className="absolute inset-0 w-full h-full object-cover z-10"
         onPlay={(e) => { e.target.playbackRate = 0.9; }}
         onTimeUpdate={(e) => {
-          // 3 Frames vor Ende pausieren (24fps → 0.125s vor Ende)
+          // 0.7s vor Ende freezen (Kanone in Kamera-Blick), dynamisch
           const v = e.target
+          if (!v.duration) return
           const remaining = v.duration - v.currentTime
-          if (remaining <= 3 / 24 && remaining > 0) {
+          if (remaining > 0 && remaining <= 0.9) {
+            v.pause()
+            setShowText(true)
+          }
+        }}
+        onSeeked={() => {
+          // Falls User manuell springt, ebenfalls prüfen
+          const v = videoRef.current
+          if (!v) return
+          if (v.duration - v.currentTime <= 0.9) {
             v.pause()
             setShowText(true)
           }
