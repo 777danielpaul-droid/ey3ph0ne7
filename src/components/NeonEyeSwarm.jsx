@@ -24,10 +24,8 @@ const NEON_COLORS = [
   "#818cf8",
 ];
 
-const CELL_SIZE = 60;
-const EYE_COUNT = 80;
-
 // ── TUNABLES — charge / explosion power ──
+const EYE_COUNT = 80;
 const CHARGE_SPEED = 0.018; // Lade-Geschwindigkeit pro Frame (↑ = schneller geladen)
 const CHARGE_MAX = 2.5; // Maximaler Ladelevel (↑ = stärkere End-Explosion)
 const NUKE_THRESHOLD = 2.4; // Ab welchem Level der Nuke-Effekt einsetzt
@@ -113,19 +111,6 @@ function playStompSound(charge = 1) {
   subOsc.stop(t + 0.55 * charge);
 }
 
-function buildGrid(eyes) {
-  const grid = {};
-  for (let i = 0; i < eyes.length; i++) {
-    const eye = eyes[i];
-    const gx = Math.floor(eye.x / CELL_SIZE);
-    const gy = Math.floor(eye.y / CELL_SIZE);
-    const key = gx + "_" + gy;
-    if (!grid[key]) grid[key] = [];
-    grid[key].push(eye);
-  }
-  return grid;
-}
-
 export default function NeonEyeSwarm() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -142,8 +127,6 @@ export default function NeonEyeSwarm() {
     alpha: 0,
     active: false,
   });
-  const gridRef = useRef({});
-  const frameCountRef = useRef(0);
 
   const initEyes = useCallback((w, h) => {
     eyesRef.current = Array.from({ length: EYE_COUNT }, (_, i) => {
@@ -318,7 +301,7 @@ export default function NeonEyeSwarm() {
     // ── CHARGE-STOMP: halten → stärker ──
     let chargeLevel = 0;
     let chargeActive = false;
-    const chargeAuraRef = { radius: 0, alpha: 0 };
+    const chargeAuraRef = { cx: 0, cy: 0, radius: 0, alpha: 0 };
 
     const startCharge = (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -457,14 +440,6 @@ export default function NeonEyeSwarm() {
       const eyes = eyesRef.current;
       const stomp = stompRef.current;
 
-      // Rebuild spatial grid lazily — every 3 frames (~8fps bei 25fps-Limit)
-      if (frameCountRef.current % 3 === 0) {
-        gridRef.current = buildGrid(eyes);
-      }
-      frameCountRef.current++;
-
-      const grid = gridRef.current;
-
       ctx.clearRect(0, 0, W, H);
 
       // Charge-Aura (sichtbar während mouse-down)
@@ -578,27 +553,29 @@ export default function NeonEyeSwarm() {
           }
         }
 
-        // Spatial grid collision (O(N) avg)
-        const gx = Math.floor(eye.x / CELL_SIZE);
-        const gy = Math.floor(eye.y / CELL_SIZE);
-        for (let dx = -1; dx <= 1; dx++) {
-          for (let dy = -1; dy <= 1; dy++) {
-            const cell = grid[gx + dx + "_" + (gy + dy)];
-            if (!cell) continue;
-            for (let ci = 0; ci < cell.length; ci++) {
-              const other = cell[ci];
-              if (other === eye) continue;
-              const edx = eye.x - other.x;
-              const edy = eye.y - other.y;
-              const eDist2 = edx * edx + edy * edy;
-              const minD = eye.radius + other.radius + 2;
-              if (eDist2 < minD * minD && eDist2 > 0) {
-                const eDist = Math.sqrt(eDist2);
-                const ov = minD - eDist;
-                eye.vx += (edx / eDist) * ov * 0.035;
-                eye.vy += (edy / eDist) * ov * 0.035;
-              }
-            }
+        // Inter-eye collision: O(N²) — 80 eyes = 6400 checks, trivial per frame
+        for (let oi = ei + 1; oi < eyes.length; oi++) {
+          const other = eyes[oi];
+          const edx = eye.x - other.x;
+          const edy = eye.y - other.y;
+          const eDist2 = edx * edx + edy * edy;
+          const minD = eye.radius + other.radius + 1;
+          if (eDist2 < minD * minD && eDist2 > 0) {
+            const eDist = Math.sqrt(eDist2);
+            const ov = minD - eDist;
+            const nx = edx / eDist;
+            const ny = edy / eDist;
+            // Position correction — half each
+            eye.x -= nx * ov * 0.5;
+            eye.y -= ny * ov * 0.5;
+            other.x += nx * ov * 0.5;
+            other.y += ny * ov * 0.5;
+            // Velocity separation
+            const sep = ov * 0.3;
+            eye.vx -= nx * sep;
+            eye.vy -= ny * sep;
+            other.vx += nx * sep;
+            other.vy += ny * sep;
           }
         }
 
@@ -640,43 +617,6 @@ export default function NeonEyeSwarm() {
         if (eye.x > W - margin) eye.vx -= 0.02;
         if (eye.y < margin) eye.vy += 0.02;
         if (eye.y > H - margin) eye.vy -= 0.02;
-        // ── Inter-eye Kollision (nach Nuke-Explosion) ──
-        // Augen verdrängen sich gegenseitig (sich nicht durchdringen)
-        const gridX = Math.floor(eye.x / CELL_SIZE);
-        const gridY = Math.floor(eye.y / CELL_SIZE);
-        for (let dx = -1; dx <= 1; dx++) {
-          for (let dy = -1; dy <= 1; dy++) {
-            const key = (gridX + dx) + "_" + (gridY + dy);
-            const cell = grid[key];
-            if (cell) {
-              for (let j = 0; j < cell.length; j++) {
-                const other = cell[j];
-                if (other === eye) continue;
-                const ox = other.x - eye.x;
-                const oy = other.y - eye.y;
-                const distSq = ox * ox + oy * oy;
-                const minDist = eye.radius + other.radius + 1;  // +1 Abstand
-                if (distSq < minDist * minDist && distSq > 0) {
-                  const dist = Math.sqrt(distSq);
-                  const overlap = minDist - dist;
-                  // Verteile die Überlappung auf beide Augen
-                  const nx = ox / dist;
-                  const ny = oy / dist;
-                  eye.x -= nx * overlap * 0.5;
-                  eye.y -= ny * overlap * 0.5;
-                  other.x += nx * overlap * 0.5;
-                  other.y += ny * overlap * 0.5;
-                  // Gegenseitige Abstoßung (Verdrängung)
-                  const separation = overlap * 0.3;
-                  eye.vx -= nx * separation;
-                  eye.vy -= ny * separation;
-                  other.vx += nx * separation;
-                  other.vy += ny * separation;
-                }
-              }
-            }
-          }
-        }
 
         eye.x += eye.vx;
         eye.y += eye.vy;
@@ -782,24 +722,24 @@ export default function NeonEyeSwarm() {
       >
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
-        <div className="absolute top-5 left-6 text-[11px] font-mono tracking-[0.2em] text-slate-600 uppercase pointer-events-none">
+        <div className="absolute top-5 left-6 text-[11px] font-mono tracking-[0.2em] text-steel uppercase pointer-events-none">
           Neon Eye Swarm // Click to STOMP
         </div>
-        <div className="absolute top-5 right-6 text-[11px] font-mono tracking-wider text-slate-600 pointer-events-none">
+        <div className="absolute top-5 right-6 text-[11px] font-mono tracking-wider text-steel pointer-events-none">
           EYES: 80
         </div>
 
         <button
           onClick={startRecording}
-          className="absolute bottom-5 right-5 px-4 py-2 rounded-lg bg-slate-800/60 border border-slate-700/40 text-slate-400 text-xs font-mono tracking-wider hover:bg-slate-700/60 hover:text-slate-300 transition-all duration-200 active:scale-95"
+          className="absolute bottom-5 right-5 px-4 py-2 rounded-lg bg-ink/60 border border-white/10 text-steel text-xs font-mono tracking-wider hover:bg-white/5 hover:text-ice transition-all duration-200 active:scale-95"
         >
           📹 15s RECORD
         </button>
 
-        <div className="absolute top-4 left-4 w-10 h-10 border-l border-t border-slate-700/20 rounded-tl pointer-events-none" />
-        <div className="absolute top-4 right-4 w-10 h-10 border-r border-t border-slate-700/20 rounded-tr pointer-events-none" />
-        <div className="absolute bottom-4 left-4 w-10 h-10 border-l border-b border-slate-700/20 rounded-bl pointer-events-none" />
-        <div className="absolute bottom-4 right-4 w-10 h-10 border-r border-b border-slate-700/20 rounded-br pointer-events-none" />
+        <div className="absolute top-4 left-4 w-10 h-10 border-l border-t border-white/5 rounded-tl pointer-events-none" />
+        <div className="absolute top-4 right-4 w-10 h-10 border-r border-t border-white/5 rounded-tr pointer-events-none" />
+        <div className="absolute bottom-4 left-4 w-10 h-10 border-l border-b border-white/5 rounded-bl pointer-events-none" />
+        <div className="absolute bottom-4 right-4 w-10 h-10 border-r border-b border-white/5 rounded-br pointer-events-none" />
       </div>
     </section>
   );

@@ -17,8 +17,6 @@ export default function Navbar() {
   const links = [
     { label: "Start", href: "#hero" },
     { label: "Swarm", href: "#swarm" },
-    { label: "Projekte", href: "#projects" },
-    { label: "Kontakt", href: "#contact" },
   ]
 
   return (
