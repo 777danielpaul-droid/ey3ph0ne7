@@ -45,9 +45,14 @@ export default function HeroSection() {
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover z-10"
         onPlay={(e) => { e.target.playbackRate = 0.9; }}
-        onEnded={() => {
-          // Letzter Frame bleibt sichtbar — Video bleibt im DOM, Text erscheint darüber.
-          setShowText(true)
+        onTimeUpdate={(e) => {
+          // 3 Frames vor Ende pausieren (24fps → 0.125s vor Ende)
+          const v = e.target
+          const remaining = v.duration - v.currentTime
+          if (remaining <= 3 / 24 && remaining > 0) {
+            v.pause()
+            setShowText(true)
+          }
         }}
         onClick={replay}
       >
